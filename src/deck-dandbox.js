@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import DeckGL from "@deck.gl/react";
-import { MapView, OrthographicView, COORDINATE_SYSTEM } from "@deck.gl/core";
-import { BitmapLayer } from "@deck.gl/layers";
-import GL from "@luma.gl/constants";
+import React, { useCallback, useState } from 'react';
+import DeckGL from '@deck.gl/react';
+import { MapView, OrthographicView, COORDINATE_SYSTEM } from '@deck.gl/core';
+import { BitmapLayer } from '@deck.gl/layers';
+import GL from '@luma.gl/constants';
 
 export const DEFAULT_MAP_VIEW_STATE = Object.freeze({
   longitude: 0,
@@ -16,41 +16,25 @@ export const DEFAULT_MAP_VIEW_STATE = Object.freeze({
 });
 
 export const VIEW = Object.freeze({
-  MAIN: "main-view",
-  HUD: "hud-view",
+  MAIN: 'main-view',
+  HUD: 'hud-view',
+  MAG: 'mag-view',
 });
 
-const DATA = {
-  tick: 0,
-};
-
 const DeckSandbox = () => {
-  const [viewState, setViewState] = useState({ ...DEFAULT_MAP_VIEW_STATE });
-
-  const setCustomViewState = ({ viewState: newViewState }) => {
-    // fix by setting view only every other tick during zoom
-    // if (newViewState.zoom === viewState.zoom || DATA.tick++ % 2 === 0) {
-    //   setViewState(newViewState);
-    // }
-
-    // note: with this one it will produce warnings. Comment this one and uncomment
-    //       the one above to fix the issue
-    setViewState(newViewState);
-  };
+  const [viewStates, setViewStates] = useState({ ...DEFAULT_MAP_VIEW_STATE });
 
   const views = [
     new MapView({
       id: VIEW.MAIN,
       controller: true,
-      viewState,
-      onViewStateChange: setCustomViewState,
     }),
     new OrthographicView({ id: VIEW.HUD }),
   ];
 
   const layers = [
     new BitmapLayer({
-      id: "bg",
+      id: 'bg',
       pickable: true,
 
       coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
@@ -61,10 +45,16 @@ const DeckSandbox = () => {
         [GL.TEXTURE_MAG_FILTER]: GL.NEAREST,
       },
 
-      image: "bg.jpg",
+      image: 'bg.jpg',
       bounds: [-1920, -1080, 1920, 1080],
     }),
   ];
+
+  // note: do not use viewState and onViewStateChange on views directly,
+  //       it must be managed this way
+  const handleViewStateChange = ({ viewId, viewState }) => {
+    setViewStates(prev => ({ ...prev, [viewId]: viewState }));
+  };
 
   const layerFilter = ({ layer, viewport }) => {
     switch (viewport?.id) {
@@ -82,7 +72,8 @@ const DeckSandbox = () => {
       layerFilter={layerFilter}
       // view
       views={views}
-      initialViewState={{ [VIEW.MAIN]: { ...DEFAULT_MAP_VIEW_STATE } }}
+      viewState={viewStates}
+      onViewStateChange={handleViewStateChange}
     />
   );
 };
